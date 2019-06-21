@@ -1,0 +1,119 @@
+<html>
+<head>
+    <title><3</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" integrity="sha256-gsmEoJAws/Kd3CjuOQzLie5Q3yshhvmo7YNtBG7aaEY=" crossorigin="anonymous">
+    <style>
+        body {
+            margin: 0;
+        }
+        #connect {
+            border: none;
+            color: #323B44;
+            height: 100%;
+            width: 100%;
+            position: fixed;
+        }
+        button {
+            border: none;
+            color: white;
+            font-size: 10rem;
+        }
+        #show-temp {
+            height: 50%;
+            width: 100%;
+            background-color: #3BAFDA;
+        }
+        div.ledButtons {
+            display: flex;
+            height: 50%;
+        }
+        div.ledButtons button{
+            width: 50%;
+            height: 100%;
+        }
+        div.ledButtons button[data-value="1"]{
+            background-color: #26A84D;
+        }
+        div.ledButtons button[data-value="0"]{
+            background-color: #EF5350;
+        }
+    </style>
+</head>
+<body>
+<button type="button" id="connect">Hello</button>
+<button type="button" id="show-temp">
+    <i class="fa fa-thermometer-three-quarters" aria-hidden="true"></i>
+    <span id="temp_value">-</span>&nbsp;°C
+</button>
+<div class="ledButtons">
+    <button type="button" class="set-led" data-value="1"><i class="fa fa-lightbulb-o" aria-hidden="true"></i></button>
+    <button type="button" class="set-led" data-value="0"><i class="fa fa-lightbulb-o" aria-hidden="true"></i></button>
+</div>
+<script type="text/javascript">
+    const service_uuid = "65052f48-6410-40d9-901f-2a2077f4aada";
+    const temp_uuid = "bd0c8283-1ef4-40d5-a9cf-418913f3bc37";
+    const led_uuid = "bd0c8283-1ef4-40d5-a9cf-418913f3bc38";
+
+    let tempCharacteristic = null;
+    let ledCharacteristic = null;
+
+    document.getElementById('connect').addEventListener('click', () => {
+        let options = {
+            filters: [
+                {services: [service_uuid]},
+            ],
+        };
+
+        navigator.bluetooth.requestDevice(options)
+            .then(function(device) {
+                console.log('Name: ' + device.name);
+                console.log(device);
+
+                return device.gatt.connect();
+            })
+            .then(server => {
+                console.log(server);
+                return server.getPrimaryService(service_uuid);
+            })
+            .then(service => {
+                return Promise.all([
+                    service.getCharacteristic(temp_uuid),
+                    service.getCharacteristic(led_uuid)
+                ])
+            })
+            .then(characteristics => {
+                tempCharacteristic = characteristics[0];
+                ledCharacteristic = characteristics[1];
+                document.getElementById('connect').remove();
+                console.log('connected');
+            })
+            .catch(function(error) {
+                console.log("Something went wrong. " + error);
+            });
+    });
+
+    document.getElementById('show-temp').addEventListener('click', () => {
+        tempCharacteristic.readValue()
+            .then(value => {
+                document.getElementById('temp_value').innerText = new TextDecoder().decode(value);
+            })
+            .catch(function(error) {
+                console.log("Something went wrong. " + error);
+            });
+    });
+
+    function setValues(value)
+    {
+        ledCharacteristic.writeValue(new Uint8Array([value]))
+            .catch(function(error) {
+                console.log("Something went wrong. " + error);
+            })
+        ;
+    }
+
+    Array.from(document.getElementsByClassName('set-led')).forEach(function(element) {
+        element.addEventListener('click', (event) => {setValues(event.target.getAttribute('data-value'))});
+    });
+</script>
+</body>
+</html>
